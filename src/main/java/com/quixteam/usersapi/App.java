@@ -3,8 +3,6 @@ package com.quixteam.usersapi;
 import com.amazonaws.regions.Regions;
 import com.amazonaws.services.cognitoidp.AWSCognitoIdentityProvider;
 import com.amazonaws.services.cognitoidp.AWSCognitoIdentityProviderClientBuilder;
-import com.amazonaws.services.cognitoidp.model.AttributeType;
-import com.amazonaws.services.cognitoidp.model.SignUpRequest;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
 import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBMapper;
@@ -21,8 +19,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.quixteam.usersapi.entity.Module;
 import com.quixteam.usersapi.entity.RoleEntity;
-import com.quixteam.usersapi.entity.UserEntity;
-import com.quixteam.usersapi.requestbody.CreateUserRequest;
+import com.quixteam.usersapi.services.UserService;
+import com.quixteam.usersapi.util.LambdaUtil;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -37,6 +35,8 @@ public class App implements RequestHandler<APIGatewayV2HTTPEvent, APIGatewayV2HT
     public APIGatewayV2HTTPResponse handleRequest(APIGatewayV2HTTPEvent event, Context context) {
         LambdaLogger logger = context.getLogger();
         objectMapper = new ObjectMapper();
+        dynamoDBMapper = dynamoDBMapper();
+        UserService userService = new UserService(objectMapper, dynamoDBMapper, cognitoClient());
         logger.log("Got event" + event.toString());
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
@@ -46,10 +46,13 @@ public class App implements RequestHandler<APIGatewayV2HTTPEvent, APIGatewayV2HT
         try {
             switch (routeKey) {
                 case "POST /users":
-                    response = createNewUser(event);
+                    response = userService.createNewUser(event);
+                    break;
+                case "POST /users/{username}/roles":
+                    response = userService.assignRole(event);
                     break;
                 case "GET /users":
-                    response = getAllUsers();
+                    response = userService.getAllUsers();
                     break;
                 case "POST /roles":
                     response = createRole(event);
@@ -81,27 +84,11 @@ public class App implements RequestHandler<APIGatewayV2HTTPEvent, APIGatewayV2HT
         return response;
     }
 
-    private APIGatewayV2HTTPResponse createNewUser(APIGatewayV2HTTPEvent event) throws JsonProcessingException {
-        var body = event.getBody();
-        String output = "{ \"message\": \"User Saved successfully\" }";
 
-        dynamoDBMapper = dynamoDBMapper();
-        var userRequest = objectMapper.readValue(body, CreateUserRequest.class);
+    private List<String> getRoleNames() {
         var roleEntities = getRoles();
         var roleNames = roleEntities.stream().map(RoleEntity::getName).collect(Collectors.toList());
-
-        if (userRequest.getRoles().stream().anyMatch(role -> !roleNames.contains(role))) {
-            output = String.format("{ \"message\": \"%s\" }", "Invalid roles provided " + userRequest.getRoles());
-        } else {
-            saveUserInCognito(userRequest);
-            saveUser(userRequest);
-        }
-
-
-        APIGatewayV2HTTPResponse response = new APIGatewayV2HTTPResponse();
-        response.setBody(output);
-        response.setStatusCode(200);
-        return response;
+        return roleNames;
     }
 
     private List<RoleEntity> getRoles() {
@@ -110,50 +97,14 @@ public class App implements RequestHandler<APIGatewayV2HTTPEvent, APIGatewayV2HT
         return dynamoDBMapper.scan(RoleEntity.class, scanExpression);
     }
 
-    private void saveUser(CreateUserRequest userRequest) {
-        var userEntity = new UserEntity();
-        userEntity.setUsername(userRequest.getUsername());
-        userEntity.setRoles(userRequest.getRoles());
-        dynamoDBMapper.save(userEntity);
-    }
-
-    private void saveUserInCognito(CreateUserRequest userRequest) {
-        var cognitoClient = cognitoClient();
-        SignUpRequest signUpRequest = new SignUpRequest();
-        signUpRequest.setUsername(userRequest.getUsername());
-        signUpRequest.setPassword(userRequest.getPassword());
-        AttributeType attributeType = new AttributeType();
-        attributeType.setName("email");
-        attributeType.setValue(userRequest.getEmail());
-        signUpRequest.setUserAttributes(List.of(attributeType));
-        signUpRequest.setClientId("5b0of4v9vle7nek3l98ht3arc");
-        cognitoClient.signUp(signUpRequest);
-    }
-
-    private APIGatewayV2HTTPResponse getAllUsers() throws JsonProcessingException {
-        var userEntities = getUsers();
-        var output = objectMapper.writeValueAsString(userEntities);
-        APIGatewayV2HTTPResponse response = new APIGatewayV2HTTPResponse();
-        response.setBody(output);
-        response.setStatusCode(200);
-        return response;
-
-    }
-
-    private List<UserEntity> getUsers() {
-        DynamoDBScanExpression scanExpression = new DynamoDBScanExpression();
-        return dynamoDBMapper.scan(UserEntity.class, scanExpression);
-    }
-
 
     private APIGatewayV2HTTPResponse createRole(APIGatewayV2HTTPEvent event) throws JsonProcessingException {
         var body = event.getBody();
         String output = "{ \"message\": \"Role Created successfully\" }";
         int statusCode;
-        dynamoDBMapper = dynamoDBMapper();
+
         var roleRequest = objectMapper.readValue(body, RoleEntity.class);
-        var roleEntities = getRoles();
-        var roleNames = roleEntities.stream().map(RoleEntity::getName).collect(Collectors.toList());
+        List<String> roleNames = getRoleNames();
 
         if (roleNames.stream().anyMatch(role -> role.equalsIgnoreCase(roleRequest.getName()))) {
             output = String.format("{ \"message\": \"%s\" }", "Role already exist " + roleRequest.getName());
@@ -175,8 +126,8 @@ public class App implements RequestHandler<APIGatewayV2HTTPEvent, APIGatewayV2HT
 
     private APIGatewayV2HTTPResponse getAllRoles() throws JsonProcessingException {
 
-        var userEntities = getUsers();
-        var output = objectMapper.writeValueAsString(userEntities);
+        var roleEntities = getRoles();
+        var output = objectMapper.writeValueAsString(roleEntities);
         APIGatewayV2HTTPResponse response = new APIGatewayV2HTTPResponse();
         response.setBody(output);
         response.setStatusCode(200);
@@ -190,7 +141,7 @@ public class App implements RequestHandler<APIGatewayV2HTTPEvent, APIGatewayV2HT
         var body = event.getBody();
         String output = "{ \"message\": \"Module Added successfully\" }";
         int statusCode;
-        dynamoDBMapper = dynamoDBMapper();
+
         var module = objectMapper.readValue(body, Module.class);
         var roleEntityOptional = getRoleByName(roleName);
 
@@ -201,7 +152,7 @@ public class App implements RequestHandler<APIGatewayV2HTTPEvent, APIGatewayV2HT
         } else {
             var roleEntity = roleEntityOptional.get();
             var modules = roleEntity.getModules();
-            if (isEmptyCollection(modules)) {
+            if (LambdaUtil.isEmptyCollection(modules)) {
                 modules = new ArrayList<>();
             }
             modules.add(module);
@@ -238,7 +189,7 @@ public class App implements RequestHandler<APIGatewayV2HTTPEvent, APIGatewayV2HT
         var body = event.getBody();
         String output = "{ \"message\": \"Permission Added successfully\" }";
         int statusCode;
-        dynamoDBMapper = dynamoDBMapper();
+
         var permissions = objectMapper.readValue(body, List.class);
         var roleEntityOptional = getRoleByName(roleName);
 
@@ -256,7 +207,7 @@ public class App implements RequestHandler<APIGatewayV2HTTPEvent, APIGatewayV2HT
             } else {
                 var moduleEntity = moduleEntityOptional.get();
                 var permissionList = moduleEntity.getPermissions();
-                if (isEmptyCollection(permissionList)) {
+                if (LambdaUtil.isEmptyCollection(permissionList)) {
                     permissionList = new ArrayList<>();
                 }
                 permissionList.addAll(permissions);
@@ -284,11 +235,6 @@ public class App implements RequestHandler<APIGatewayV2HTTPEvent, APIGatewayV2HT
     private AmazonDynamoDB amazonDynamoDB() {
         return AmazonDynamoDBClientBuilder.standard().withRegion(Regions.US_EAST_2)
                 .build();
-    }
-
-
-    private boolean isEmptyCollection(Collection<?> collection) {
-        return null == collection || collection.size() == 0;
     }
 
 
