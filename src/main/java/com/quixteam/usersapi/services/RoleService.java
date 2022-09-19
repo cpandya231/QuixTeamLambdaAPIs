@@ -85,10 +85,10 @@ public class RoleService {
                 var roleEntity = roleEntityOptional.get();
                 var childRoles = roleEntity.getChildRoles();
                 if (LambdaUtil.isEmptyCollection(childRoles)) {
-                    childRoles = new HashSet<>();
+                    childRoles = new ArrayList<>();
                 }
                 childRoles.addAll(childRolesRequest);
-                roleEntity.setChildRoles(childRoles);
+                roleEntity.setChildRoles(childRoles.stream().distinct().collect(Collectors.toList()));
                 saveRole(roleEntity);
                 statusCode = 200;
             }
@@ -133,6 +133,7 @@ public class RoleService {
                 modules = new ArrayList<>();
             }
             modules.add(module);
+            roleEntity.setModules(modules);
             saveRole(roleEntity);
             statusCode = 200;
 
@@ -215,10 +216,10 @@ public class RoleService {
                 var moduleEntity = moduleEntityOptional.get();
                 var permissionList = moduleEntity.getPermissions();
                 if (LambdaUtil.isEmptyCollection(permissionList)) {
-                    permissionList = new HashSet<>();
+                    permissionList = new ArrayList<>();
                 }
                 permissionList.addAll(permissions);
-                moduleEntity.setPermissions(permissionList);
+                moduleEntity.setPermissions(permissionList.stream().distinct().collect(Collectors.toList()));
 
                 saveRole(roleEntity);
                 statusCode = 200;
@@ -255,10 +256,10 @@ public class RoleService {
             } else {
                 var moduleEntity = moduleEntityOptional.get();
                 var permissions = moduleEntity.getPermissions();
-                var modulesToDelete =
+                var permissionToDelete =
                         permissions.stream().filter(permissionDeleteRequest::contains).collect(Collectors.toSet());
 
-                permissions.removeAll(modulesToDelete);
+                permissions.removeAll(permissionToDelete);
                 moduleEntity.setPermissions(permissions);
                 saveRole(roleEntity);
                 statusCode = 200;

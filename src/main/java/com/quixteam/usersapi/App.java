@@ -44,6 +44,9 @@ public class App implements RequestHandler<APIGatewayV2HTTPEvent, APIGatewayV2HT
                 case "POST /users/{username}/roles":
                     response = userService.assignRole(event);
                     break;
+                case "DELETE /users/{username}":
+                    response = userService.suspendUser(event);
+                    break;
                 case "GET /users":
                     response = userService.getAllUsers();
                     break;

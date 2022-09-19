@@ -12,7 +12,7 @@ public class Module {
     @DynamoDBAttribute
     private String name;
     @DynamoDBAttribute
-    private Set<String> permissions;
+    private List<String> permissions;
 
 
     public Module() {
@@ -26,11 +26,11 @@ public class Module {
         this.name = name;
     }
 
-    public Set<String> getPermissions() {
+    public List<String> getPermissions() {
         return permissions;
     }
 
-    public void setPermissions(Set<String> permissions) {
+    public void setPermissions(List<String> permissions) {
         this.permissions = permissions;
     }
 }

@@ -84,7 +84,7 @@ public class UserService {
     private void saveUser(CreateUserRequest userRequest) {
         var userEntity = new UserEntity();
         userEntity.setUsername(userRequest.getUsername());
-        userEntity.setRoles(userRequest.getRoles());
+        userEntity.setRoles(userRequest.getRoles().stream().distinct().collect(Collectors.toList()));
         userEntity.setStatus("ACTIVE");
         dynamoDBMapper.save(userEntity);
     }
@@ -128,10 +128,11 @@ public class UserService {
                 var userEntity = userEntityOptional.get();
                 var existingRoles = userEntity.getRoles();
                 if (LambdaUtil.isEmptyCollection(existingRoles)) {
-                    existingRoles = new HashSet<>();
+                    existingRoles = new ArrayList<>();
                 }
                 existingRoles.addAll(roleRequest);
-                userEntity.setRoles(existingRoles);
+
+                userEntity.setRoles(existingRoles.stream().distinct().collect(Collectors.toList()));
                 dynamoDBMapper.save(userEntity);
             }
         }
@@ -157,12 +158,11 @@ public class UserService {
     }
 
 
-    public APIGatewayV2HTTPResponse suspendUser(APIGatewayV2HTTPEvent event) throws JsonProcessingException {
-        var body = event.getBody();
+    public APIGatewayV2HTTPResponse suspendUser(APIGatewayV2HTTPEvent event) {
         var pathParams = event.getPathParameters();
         var username = pathParams.get("username");
 
-        String output = "{ \"message\": \"User Updated successfully\" }";
+        String output = "{ \"message\": \"User Suspended successfully\" }";
         int statusCode = 200;
         var userEntityOptional = getUserByUsername(username);
 

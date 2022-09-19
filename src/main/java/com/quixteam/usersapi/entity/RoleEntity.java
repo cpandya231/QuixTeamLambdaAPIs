@@ -14,7 +14,7 @@ public class RoleEntity {
     @DynamoDBAttribute
     private List<Module> modules;
     @DynamoDBAttribute
-    private Set<String> childRoles;
+    private List<String> childRoles;
 
     public String getName() {
         return name;
@@ -32,11 +32,11 @@ public class RoleEntity {
         this.modules = modules;
     }
 
-    public Set<String> getChildRoles() {
+    public List<String> getChildRoles() {
         return childRoles;
     }
 
-    public void setChildRoles(Set<String> childRoles) {
+    public void setChildRoles(List<String> childRoles) {
         this.childRoles = childRoles;
     }
 }
