@@ -20,9 +20,9 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 public class UserService {
-    private ObjectMapper objectMapper;
-    private DynamoDBMapper dynamoDBMapper;
-    private AWSCognitoIdentityProvider awsCognitoIdentityProvider;
+    private final ObjectMapper objectMapper;
+    private final DynamoDBMapper dynamoDBMapper;
+    private final AWSCognitoIdentityProvider awsCognitoIdentityProvider;
 
     public UserService(ObjectMapper objectMapper, DynamoDBMapper dynamoDBMapper, AWSCognitoIdentityProvider awsCognitoIdentityProvider) {
         this.objectMapper = objectMapper;
@@ -123,7 +123,7 @@ public class UserService {
                 var userEntity = userEntityOptional.get();
                 var existingRoles = userEntity.getRoles();
                 if (LambdaUtil.isEmptyCollection(existingRoles)) {
-                    existingRoles = new ArrayList<>();
+                    existingRoles = new HashSet<>();
                 }
                 existingRoles.addAll(roleRequest);
                 userEntity.setRoles(existingRoles);

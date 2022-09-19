@@ -5,6 +5,7 @@ import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBHashKey;
 import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBTable;
 
 import java.util.List;
+import java.util.Set;
 
 @DynamoDBTable(tableName = "Roles")
 public class RoleEntity {
@@ -12,6 +13,8 @@ public class RoleEntity {
     private String name;
     @DynamoDBAttribute
     private List<Module> modules;
+    @DynamoDBAttribute
+    private Set<String> childRoles;
 
     public String getName() {
         return name;
@@ -27,5 +30,13 @@ public class RoleEntity {
 
     public void setModules(List<Module> modules) {
         this.modules = modules;
+    }
+
+    public Set<String> getChildRoles() {
+        return childRoles;
+    }
+
+    public void setChildRoles(Set<String> childRoles) {
+        this.childRoles = childRoles;
     }
 }

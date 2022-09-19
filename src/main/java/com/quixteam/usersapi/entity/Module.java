@@ -4,6 +4,7 @@ import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBAttribute;
 import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBDocument;
 
 import java.util.List;
+import java.util.Set;
 
 @DynamoDBDocument
 public class Module {
@@ -11,7 +12,7 @@ public class Module {
     @DynamoDBAttribute
     private String name;
     @DynamoDBAttribute
-    private List<String> permissions;
+    private Set<String> permissions;
 
 
     public Module() {
@@ -25,11 +26,11 @@ public class Module {
         this.name = name;
     }
 
-    public List<String> getPermissions() {
+    public Set<String> getPermissions() {
         return permissions;
     }
 
-    public void setPermissions(List<String> permissions) {
+    public void setPermissions(Set<String> permissions) {
         this.permissions = permissions;
     }
 }

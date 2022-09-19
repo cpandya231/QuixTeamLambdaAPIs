@@ -1,12 +1,13 @@
 package com.quixteam.usersapi.requestbody;
 
 import java.util.List;
+import java.util.Set;
 
 public class CreateUserRequest {
     private String username;
     private String password;
     private String email;
-    private List<String> roles;
+    private Set<String> roles;
 
     public String getUsername() {
         return username;
@@ -32,11 +33,11 @@ public class CreateUserRequest {
         this.email = email;
     }
 
-    public List<String> getRoles() {
+    public Set<String> getRoles() {
         return roles;
     }
 
-    public void setRoles(List<String> roles) {
+    public void setRoles(Set<String> roles) {
         this.roles = roles;
     }
 }

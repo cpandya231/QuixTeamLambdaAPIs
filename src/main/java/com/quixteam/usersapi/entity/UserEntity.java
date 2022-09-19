@@ -5,13 +5,14 @@ import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBHashKey;
 import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBTable;
 
 import java.util.List;
+import java.util.Set;
 
 @DynamoDBTable(tableName = "Users")
 public class UserEntity {
     @DynamoDBHashKey
     private String username;
     @DynamoDBAttribute
-    private List<String> roles;
+    private Set<String> roles;
 
     public String getUsername() {
         return username;
@@ -21,11 +22,11 @@ public class UserEntity {
         this.username = username;
     }
 
-    public List<String> getRoles() {
+    public Set<String> getRoles() {
         return roles;
     }
 
-    public void setRoles(List<String> roles) {
+    public void setRoles(Set<String> roles) {
         this.roles = roles;
     }
 }
