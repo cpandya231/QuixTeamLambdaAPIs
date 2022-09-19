@@ -59,8 +59,14 @@ public class App implements RequestHandler<APIGatewayV2HTTPEvent, APIGatewayV2HT
                 case "POST /modules/{roleName}":
                     response = roleService.createModule(event);
                     break;
+                case "DELETE /modules/{roleName}":
+                    response = roleService.deleteModule(event);
+                    break;
                 case "POST /permissions/{roleName}/{moduleName}":
                     response = roleService.createPermission(event);
+                    break;
+                case "DELETE /permissions/{roleName}/{moduleName}":
+                    response = roleService.deletePermissions(event);
                     break;
                 default:
                     response = new APIGatewayV2HTTPResponse();

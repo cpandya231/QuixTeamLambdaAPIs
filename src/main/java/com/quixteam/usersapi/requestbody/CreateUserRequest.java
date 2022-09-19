@@ -1,6 +1,5 @@
 package com.quixteam.usersapi.requestbody;
 
-import java.util.List;
 import java.util.Set;
 
 public class CreateUserRequest {

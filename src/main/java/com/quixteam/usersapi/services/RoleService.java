@@ -70,22 +70,30 @@ public class RoleService {
         int statusCode;
 
         var childRolesRequest = objectMapper.readValue(body, List.class);
-        Optional<RoleEntity> roleEntityOptional = getRoleByName(roleName);
+        List<String> roleNames = getRoleNames();
 
-        if (roleEntityOptional.isEmpty()) {
-            output = String.format("{ \"message\": \"%s\" }", "Role does not exist for" + roleName);
-            statusCode = 404;
+        if (childRolesRequest.stream().anyMatch(role -> !roleNames.contains(role))) {
+            output = String.format("{ \"message\": \"%s\" }", "Invalid roles provided " + childRolesRequest);
+            statusCode = 400;
         } else {
-            var roleEntity = roleEntityOptional.get();
-            var childRoles = roleEntity.getChildRoles();
-            if (LambdaUtil.isEmptyCollection(childRoles)) {
-                childRoles = new HashSet<>();
+            Optional<RoleEntity> roleEntityOptional = getRoleByName(roleName);
+
+            if (roleEntityOptional.isEmpty()) {
+                output = String.format("{ \"message\": \"%s\" }", "Role does not exist for" + roleName);
+                statusCode = 404;
+            } else {
+                var roleEntity = roleEntityOptional.get();
+                var childRoles = roleEntity.getChildRoles();
+                if (LambdaUtil.isEmptyCollection(childRoles)) {
+                    childRoles = new HashSet<>();
+                }
+                childRoles.addAll(childRolesRequest);
+                roleEntity.setChildRoles(childRoles);
+                saveRole(roleEntity);
+                statusCode = 200;
             }
-            childRoles.addAll(childRolesRequest);
-            roleEntity.setChildRoles(childRoles);
-            saveRole(roleEntity);
-            statusCode = 200;
         }
+
         APIGatewayV2HTTPResponse response = new APIGatewayV2HTTPResponse();
         response.setBody(output);
         response.setStatusCode(statusCode);
@@ -150,6 +158,36 @@ public class RoleService {
         return dynamoDBMapper.query(RoleEntity.class, getQueryExpression).stream().findAny();
     }
 
+    public APIGatewayV2HTTPResponse deleteModule(APIGatewayV2HTTPEvent event) throws JsonProcessingException {
+        var pathParams = event.getPathParameters();
+        var roleName = pathParams.get("roleName");
+        var body = event.getBody();
+        var moduleDeleteRequest = objectMapper.readValue(body, List.class);
+        String output = "{ \"message\": \"Module Deleted successfully\" }";
+        int statusCode;
+
+
+        var roleEntityOptional = getRoleByName(roleName);
+
+
+        if (roleEntityOptional.isEmpty()) {
+            output = String.format("{ \"message\": \"%s\" }", "Role does not exist for" + roleName);
+            statusCode = 404;
+        } else {
+            var roleEntity = roleEntityOptional.get();
+            var modules = roleEntity.getModules();
+            var modulesToDelete =
+                    modules.stream().filter(module -> moduleDeleteRequest.contains(module.getName())).collect(Collectors.toSet());
+            roleEntity.getModules().removeAll(modulesToDelete);
+            saveRole(roleEntity);
+            statusCode = 200;
+        }
+
+        APIGatewayV2HTTPResponse response = new APIGatewayV2HTTPResponse();
+        response.setBody(output);
+        response.setStatusCode(statusCode);
+        return response;
+    }
 
     public APIGatewayV2HTTPResponse createPermission(APIGatewayV2HTTPEvent event) throws JsonProcessingException {
         var pathParams = event.getPathParameters();
@@ -182,6 +220,46 @@ public class RoleService {
                 permissionList.addAll(permissions);
                 moduleEntity.setPermissions(permissionList);
 
+                saveRole(roleEntity);
+                statusCode = 200;
+            }
+        }
+        APIGatewayV2HTTPResponse response = new APIGatewayV2HTTPResponse();
+        response.setBody(output);
+        response.setStatusCode(statusCode);
+        return response;
+    }
+
+    public APIGatewayV2HTTPResponse deletePermissions(APIGatewayV2HTTPEvent event) throws JsonProcessingException {
+        var pathParams = event.getPathParameters();
+        var roleName = pathParams.get("roleName");
+        var moduleName = pathParams.get("moduleName");
+        var body = event.getBody();
+        var permissionDeleteRequest = objectMapper.readValue(body, List.class);
+        String output = "{ \"message\": \"Permissions Deleted successfully\" }";
+        int statusCode;
+
+        var roleEntityOptional = getRoleByName(roleName);
+
+
+        if (roleEntityOptional.isEmpty()) {
+            output = String.format("{ \"message\": \"%s\" }", "Role does not exist for" + roleName);
+            statusCode = 404;
+        } else {
+            var roleEntity = roleEntityOptional.get();
+            var modules = roleEntity.getModules();
+            var moduleEntityOptional = modules.stream().filter(module -> module.getName().equalsIgnoreCase(moduleName)).findFirst();
+            if (moduleEntityOptional.isEmpty()) {
+                output = String.format("{ \"message\": \"%s\" }", "Module does not exist for" + moduleName);
+                statusCode = 404;
+            } else {
+                var moduleEntity = moduleEntityOptional.get();
+                var permissions = moduleEntity.getPermissions();
+                var modulesToDelete =
+                        permissions.stream().filter(permissionDeleteRequest::contains).collect(Collectors.toSet());
+
+                permissions.removeAll(modulesToDelete);
+                moduleEntity.setPermissions(permissions);
                 saveRole(roleEntity);
                 statusCode = 200;
             }

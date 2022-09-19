@@ -117,8 +117,9 @@ public class UserService {
             var roleRequest = objectMapper.readValue(body, List.class);
             List<String> roleNames = getRoleNames();
 
-            if (roleNames.stream().anyMatch(role -> !roleNames.contains(role))) {
+            if (roleRequest.stream().anyMatch(role -> !roleNames.contains(role))) {
                 output = String.format("{ \"message\": \"%s\" }", "Invalid roles provided " + roleRequest);
+                statusCode = 400;
             } else {
                 var userEntity = userEntityOptional.get();
                 var existingRoles = userEntity.getRoles();
